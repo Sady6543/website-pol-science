@@ -112,30 +112,27 @@ export default function MapPage() {
           {/* 1. SVG Map Container (Left 3 columns) */}
           <div className="lg:col-span-3 rounded-xl border border-border-subtle bg-bg-surface p-4 relative overflow-hidden flex flex-col items-center">
             
-            {/* Legend Tickers */}
-            <div className="absolute top-4 left-4 flex gap-4 text-[10px] font-mono uppercase text-text-tertiary">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#EF4444]" />
-                <span>Critical</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#EC4899]" />
-                <span>High Risk</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B]" />
-                <span>Medium</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#3D6BFF]" />
-                <span>Stable</span>
-              </div>
+            {/* Legend Tickers — wraps on mobile */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[10px] font-mono uppercase text-text-tertiary mb-2" role="legend" aria-label="Conflict risk legend">
+              {[
+                { label: "Critical", color: "#EF4444" },
+                { label: "High Risk", color: "#EC4899" },
+                { label: "Medium", color: "#F59E0B" },
+                { label: "Stable", color: "#3D6BFF" },
+              ].map((l) => (
+                <div key={l.label} className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: l.color }} aria-hidden="true" />
+                  <span>{l.label}</span>
+                </div>
+              ))}
             </div>
 
-            {/* Premium World SVG Canvas */}
+            {/* World SVG Canvas — uses viewBox for full responsiveness */}
             <svg
               viewBox="0 0 800 400"
-              className="w-full max-w-4xl h-auto border border-border-subtle/50 bg-[#0C0F17] rounded-lg mt-6"
+              className="w-full h-auto border border-border-subtle/50 bg-[#0C0F17] rounded-lg"
+              role="img"
+              aria-label="Interactive geopolitical world map"
             >
               {/* Abstract map grid dots */}
               <defs>
@@ -149,7 +146,15 @@ export default function MapPage() {
               {countries.map((country) => {
                 const isSelected = selectedCountry?.id === country.id;
                 return (
-                  <g key={country.id} className="group cursor-pointer">
+                  <g
+                    key={country.id}
+                    className="group cursor-pointer"
+                    role="button"
+                    aria-label={`Select ${country.name} — ${country.conflictIndex} risk`}
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedCountry(country); } }}
+                    onClick={() => setSelectedCountry(country)}
+                  >
                     <rect
                       x={country.x}
                       y={country.y}
@@ -161,11 +166,8 @@ export default function MapPage() {
                       stroke={country.color}
                       strokeWidth={isSelected ? "2.5" : "1"}
                       strokeOpacity={isSelected ? "1" : "0.4"}
-                      onClick={() => setSelectedCountry(country)}
                       className="transition-all duration-150 group-hover:fill-opacity-20 group-hover:stroke-opacity-80"
                     />
-                    
-                    {/* Country label text inside capsule */}
                     <text
                       x={country.x + country.width / 2}
                       y={country.y + country.height / 2 + 3}
@@ -175,6 +177,7 @@ export default function MapPage() {
                       textAnchor="middle"
                       fontWeight={isSelected ? "bold" : "normal"}
                       className="pointer-events-none uppercase tracking-wide opacity-80 group-hover:opacity-100"
+                      aria-hidden="true"
                     >
                       {country.id}
                     </text>

@@ -209,6 +209,28 @@ export function CommandPalette() {
       },
     },
     {
+      id: "p-progress",
+      title: "Progress & Streaks",
+      subtitle: "Heatmap, weekly review, reading activity",
+      category: "pages",
+      icon: <Compass className="h-4 w-4" />,
+      action: () => {
+        router.push("/progress");
+        setCommandPaletteOpen(false);
+      },
+    },
+    {
+      id: "p-settings",
+      title: "Settings",
+      subtitle: "Appearance, account, export, data",
+      category: "pages",
+      icon: <Compass className="h-4 w-4" />,
+      action: () => {
+        router.push("/settings");
+        setCommandPaletteOpen(false);
+      },
+    },
+    {
       id: "a-theme",
       title: `Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`,
       subtitle: "Toggles app color token sets",
@@ -304,13 +326,20 @@ export function CommandPalette() {
         ref={paletteRef}
         className="w-full max-w-lg overflow-hidden rounded-xl border border-border-subtle glass-panel shadow-elevation animate-[scaleUp_180ms_cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
       >
-        {/* Input area */}
-        <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3.5">
-          <Search className="h-4 w-4 text-text-secondary" />
+      {/* Input area */}
+        <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3.5" role="search">
+          <Search className="h-4 w-4 text-text-secondary" aria-hidden="true" />
           <input
             ref={inputRef}
+            id="command-palette-input"
             type="text"
-            placeholder="Type a command or search..."
+            role="combobox"
+            aria-expanded={filteredItems.length > 0}
+            aria-controls="command-palette-results"
+            aria-activedescendant={filteredItems[selectedIndex] ? `palette-item-${filteredItems[selectedIndex].id}` : undefined}
+            aria-autocomplete="list"
+            aria-label="Search commands and pages"
+            placeholder="Type a command or search…"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -319,43 +348,61 @@ export function CommandPalette() {
             className="flex-1 bg-transparent text-body-md text-text-primary placeholder:text-text-tertiary focus:outline-none"
           />
           <div className="flex items-center gap-1">
-            <kbd className="inline-flex h-5 items-center gap-0.5 rounded border border-border-subtle bg-bg-surface px-1.5 font-mono text-[10px] text-text-secondary">
+            <kbd
+              className="inline-flex h-5 items-center gap-0.5 rounded border border-border-subtle bg-bg-surface px-1.5 font-mono text-[10px] text-text-secondary"
+              aria-hidden="true"
+            >
               <span className="text-xs">⌘</span>K
             </kbd>
             <button
               onClick={() => setCommandPaletteOpen(false)}
               className="rounded p-1 hover:bg-bg-surface-raised cursor-pointer text-text-secondary"
+              aria-label="Close command palette"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
 
         {/* Results area */}
-        <div className="max-h-[340px] overflow-y-auto py-2">
+        <div
+          id="command-palette-results"
+          role="listbox"
+          aria-label="Command palette results"
+          className="max-h-[340px] overflow-y-auto py-2"
+        >
+          {/* Announce result count to screen readers */}
+          <div className="sr-only" aria-live="polite" aria-atomic="true">
+            {filteredItems.length === 0
+              ? "No results found"
+              : `${filteredItems.length} result${filteredItems.length !== 1 ? "s" : ""} available`}
+          </div>
           {filteredItems.length === 0 ? (
             <div className="px-4 py-8 text-center text-body-sm text-text-secondary">
-              No results found for &ldquo;<span className="font-medium text-text-primary">{query}</span>&rdquo;
+              No results for &ldquo;<span className="font-medium text-text-primary">{query}</span>&rdquo;
             </div>
           ) : (
             <div>
-              {/* Group items by category */}
               {["pages", "actions", "categories", "articles"].map((cat) => {
                 const itemsInCat = filteredItems.filter((i) => i.category === cat);
                 if (itemsInCat.length === 0) return null;
-
                 return (
                   <div key={cat} className="mb-2 last:mb-0">
-                    <div className="px-4 py-1 text-mono-sm text-text-tertiary uppercase font-mono tracking-wider">
+                    <div
+                      className="px-4 py-1 text-mono-sm text-text-tertiary uppercase font-mono tracking-wider"
+                      role="presentation"
+                    >
                       {cat}
                     </div>
                     {itemsInCat.map((item) => {
                       const absoluteIndex = filteredItems.indexOf(item);
                       const isSelected = absoluteIndex === selectedIndex;
-
                       return (
                         <div
                           key={item.id}
+                          id={`palette-item-${item.id}`}
+                          role="option"
+                          aria-selected={isSelected}
                           onClick={item.action}
                           className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors duration-75 ${
                             isSelected
@@ -366,9 +413,10 @@ export function CommandPalette() {
                           <div
                             className={`flex h-7 w-7 items-center justify-center rounded-sm border shrink-0 ${
                               isSelected
-                                ? "border-accent-signal bg-accent-signal text-text-primary"
+                                ? "border-accent-signal bg-accent-signal text-white"
                                 : "border-border-subtle bg-bg-surface text-text-secondary"
                             }`}
+                            aria-hidden="true"
                           >
                             {item.icon}
                           </div>
@@ -383,7 +431,7 @@ export function CommandPalette() {
                             )}
                           </div>
                           {isSelected && (
-                            <span className="text-mono-sm text-accent-signal font-mono">
+                            <span className="text-mono-sm text-accent-signal font-mono" aria-hidden="true">
                               Enter
                             </span>
                           )}

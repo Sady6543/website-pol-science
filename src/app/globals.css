@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* ─── Color tokens ─────────────────────────────────────────── */
 :root {
   --bg-canvas: #0A0B0D;
   --bg-surface: #141519;
@@ -17,6 +18,29 @@
   --importance-medium: #E0A93E;
   --importance-low: #5D6068;
   --shadow-elevation: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --focus-ring: 0 0 0 2px var(--accent-signal);
+}
+
+/* ─── System color scheme detection (first load, before JS) ── */
+@media (prefers-color-scheme: light) {
+  :root:not(.dark):not(.light) {
+    --bg-canvas: #FFFFFF;
+    --bg-surface: #F6F7F9;
+    --bg-surface-raised: #FFFFFF;
+    --border-subtle: #E4E6EA;
+    --text-primary: #0A0B0D;
+    --text-secondary: #5D6068;
+    --text-tertiary: #9599A3;
+    --accent-signal: #2F5AE0;
+    --accent-signal-muted: #E0E6FF;
+    --data-positive: #1E9E63;
+    --data-negative: #D93F32;
+    --data-neutral-amber: #D97706;
+    --importance-high: #D93F32;
+    --importance-medium: #D97706;
+    --importance-low: #9599A3;
+    --shadow-elevation: 0 8px 24px rgba(0, 0, 0, 0.1);
+  }
 }
 
 .light {
@@ -36,6 +60,7 @@
   --importance-medium: #D97706;
   --importance-low: #9599A3;
   --shadow-elevation: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --focus-ring: 0 0 0 2px var(--accent-signal);
 }
 
 @theme {
@@ -67,73 +92,135 @@
   --shadow-elevation: var(--shadow-elevation);
 }
 
+/* ─── Typography utilities ─────────────────────────────────── */
 @utility text-display-xl {
   font-family: var(--font-display);
-  font-size: 2.75rem; /* 44px */
-  line-height: 3.25rem; /* 52px */
+  font-size: 2.75rem;
+  line-height: 3.25rem;
   font-weight: 500;
   letter-spacing: -0.02em;
 }
 
 @utility text-display-lg {
   font-family: var(--font-display);
-  font-size: 2rem; /* 32px */
-  line-height: 2.5rem; /* 40px */
+  font-size: 2rem;
+  line-height: 2.5rem;
   font-weight: 500;
   letter-spacing: -0.01em;
 }
 
 @utility text-heading-md {
   font-family: var(--font-body);
-  font-size: 1.375rem; /* 22px */
-  line-height: 1.875rem; /* 30px */
+  font-size: 1.375rem;
+  line-height: 1.875rem;
   font-weight: 600;
 }
 
 @utility text-heading-sm {
   font-family: var(--font-body);
-  font-size: 1.0625rem; /* 17px */
-  line-height: 1.5rem; /* 24px */
+  font-size: 1.0625rem;
+  line-height: 1.5rem;
   font-weight: 600;
 }
 
 @utility text-body-md {
   font-family: var(--font-body);
-  font-size: 0.9375rem; /* 15px */
-  line-height: 1.5rem; /* 24px */
+  font-size: 0.9375rem;
+  line-height: 1.5rem;
   font-weight: 400;
 }
 
 @utility text-body-sm {
   font-family: var(--font-body);
-  font-size: 0.8125rem; /* 13px */
-  line-height: 1.25rem; /* 20px */
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+}
+
+@utility text-body-lg {
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.625rem;
   font-weight: 400;
 }
 
 @utility text-mono-md {
   font-family: var(--font-mono);
-  font-size: 0.875rem; /* 14px */
-  line-height: 1.25rem; /* 20px */
+  font-size: 0.875rem;
+  line-height: 1.25rem;
   font-weight: 500;
 }
 
 @utility text-mono-sm {
   font-family: var(--font-mono);
-  font-size: 0.75rem; /* 12px */
-  line-height: 1.125rem; /* 18px */
+  font-size: 0.75rem;
+  line-height: 1.125rem;
   font-weight: 500;
 }
 
-/* Base styles override */
+/* ─── Base styles ──────────────────────────────────────────── */
 body {
   background-color: var(--bg-canvas);
   color: var(--text-primary);
   font-family: var(--font-body);
   transition: background-color 150ms ease-in-out, color 150ms ease-in-out;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Glassmorphism for Command Palette - the ONLY glass surface */
+/* ─── Focus-visible accessibility rings ────────────────────── */
+/* Applied globally to all interactive elements */
+:focus-visible {
+  outline: 2px solid var(--accent-signal);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove default browser outline when we handle it */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skip to main content — accessibility first link */
+.skip-to-main {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.skip-to-main:focus-visible {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 9999;
+  padding: 0.5rem 1rem;
+  background: var(--accent-signal);
+  color: #fff;
+  border-radius: 6px;
+  width: auto;
+  height: auto;
+  font-size: 0.875rem;
+  font-weight: 600;
+  outline: none;
+}
+
+/* ─── Screen-reader only utility ───────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ─── Glassmorphism surfaces ───────────────────────────────── */
 .glass-panel {
   background-color: rgba(20, 21, 25, 0.8);
   backdrop-filter: blur(20px);
@@ -143,14 +230,31 @@ body {
 }
 
 .light .glass-panel {
-  background-color: rgba(246, 247, 249, 0.8);
+  background-color: rgba(246, 247, 249, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-elevation);
 }
 
-/* Custom scrollbars for dashboard feel */
+/* ─── Skeleton shimmer animation ───────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 25%,
+    var(--bg-surface-raised) 50%,
+    var(--bg-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ─── Custom scrollbars ────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -169,47 +273,71 @@ body {
   background: var(--text-tertiary);
 }
 
-/* Custom CSS Animation Keyframes */
+/* ─── Animations ───────────────────────────────────────────── */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes scaleUp {
-  from {
-    transform: scale(0.98);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+  from { transform: scale(0.98); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 @keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }
 
-/* Reduced motion accessibility overrides */
+@keyframes slideInUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ─── Reduced motion — WCAG 2.1 AA compliance ─────────────── */
+/* Collapses ALL transitions/animations to opacity-only fades  */
 @media (prefers-reduced-motion: reduce) {
-  *, ::before, ::after {
-    animation-delay: -1ms !important;
-    animation-duration: 1ms !important;
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    background-attachment: initial !important;
-    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
     transition-delay: 0s !important;
-    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Preserve opacity transitions only (not transforms) */
+  .allow-opacity-transition {
+    transition: opacity 150ms ease !important;
+  }
+
+  /* Disable shimmer — replace with static placeholder color */
+  .skeleton-shimmer {
+    animation: none !important;
+    background: var(--bg-surface-raised) !important;
   }
 }
 
+/* ─── Heatmap cell for Progress page ──────────────────────── */
+.heatmap-cell {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  transition: transform 80ms ease;
+}
 
+.heatmap-cell:hover {
+  transform: scale(1.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heatmap-cell:hover {
+    transform: none;
+  }
+}
