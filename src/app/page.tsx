@@ -361,7 +361,7 @@ export default function Home() {
                 {secondaryArticles.map((article) => (
                   <div
                     key={article.id}
-                    className="group relative overflow-hidden rounded-lg border border-border-subtle bg-bg-surface p-4 transition-colors duration-120 hover:border-accent-signal-muted"
+                    className="group relative overflow-hidden rounded-xl border border-glass-edge bg-glass-surface p-4 transition-all duration-150 hover:border-glass-edge-hover hover:bg-glass-surface-raised"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                       <div className="flex-1 flex flex-col gap-2">
@@ -381,7 +381,7 @@ export default function Home() {
                       </div>
                       <Link
                         href={`/article/${article.slug}`}
-                        className="hidden sm:flex self-center rounded-md border border-border-subtle bg-bg-surface-raised p-2 text-text-secondary hover:text-accent-signal hover:border-accent-signal shrink-0 transition-all cursor-pointer"
+                        className="hidden sm:flex self-center rounded-md border border-glass-edge bg-glass-surface-raised p-2 text-text-secondary hover:text-accent-signal hover:border-accent-signal shrink-0 transition-all cursor-pointer"
                       >
                         <ArrowRight className="h-4 w-4" />
                       </Link>
@@ -402,9 +402,9 @@ export default function Home() {
                     <Link
                       key={cat.slug}
                       href={`/categories/${cat.slug}`}
-                      className="flex items-center gap-2.5 rounded-lg border border-border-subtle bg-bg-surface p-3 transition-colors hover:border-accent-signal-muted hover:bg-bg-surface-raised/40 cursor-pointer"
+                      className="flex items-center gap-2.5 rounded-lg border border-glass-edge bg-glass-surface p-3 transition-all hover:border-glass-edge-hover hover:bg-glass-surface-raised cursor-pointer"
                     >
-                      <span className="text-lg bg-bg-canvas p-1 rounded-sm border border-border-subtle">
+                      <span className="text-lg bg-bg-canvas p-1 rounded-sm border border-glass-edge">
                         {cat.icon}
                       </span>
                       <div className="flex flex-col min-w-0">
@@ -421,7 +421,7 @@ export default function Home() {
               </section>
 
               {/* Quick Brief selector strip */}
-              <section className="rounded-lg border border-border-subtle bg-bg-surface p-4 flex flex-col gap-3">
+              <section className="rounded-xl border border-glass-edge bg-glass-surface p-4 flex flex-col gap-3">
                 <h3 className="text-body-md font-semibold text-text-primary flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-accent-signal" />
                   <span>Daily Briefings</span>
@@ -434,7 +434,7 @@ export default function Home() {
                     <Link
                       key={time}
                       href={`/brief/${time}`}
-                      className="rounded border border-border-subtle bg-bg-surface-raised hover:border-accent-signal hover:text-accent-signal py-2 text-center text-mono-sm font-mono uppercase text-text-secondary transition-all"
+                      className="rounded border border-glass-edge bg-glass-surface-raised hover:border-accent-signal hover:text-accent-signal py-2 text-center text-mono-sm font-mono uppercase text-text-secondary transition-all"
                     >
                       {time}
                     </Link>

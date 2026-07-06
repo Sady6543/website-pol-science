@@ -5,6 +5,7 @@ import Link from "next/link";
 import { GlobalShell } from "@/components/global-shell";
 import { useAuth } from "@/components/auth-provider";
 import { supabase } from "@/lib/supabase";
+import { GlassCard } from "@/components/ui/glass-card";
 import {
   Folder,
   Bookmark,
@@ -103,18 +104,17 @@ export default function VaultPage() {
               id, title, slug, summary,
               category:categories(name, icon)
             )
-          `)
-          .eq("user_id", user.id);
+          `);
+        if (bmarks) setBookmarks(bmarks as unknown as DBBookmark[]);
 
         // 2. Fetch Notes
         const { data: nts } = await supabase
           .from("notes")
           .select(`
-            id, content, highlight_ref, created_at,
+            id, content, created_at, highlight_ref,
             article:articles(title, slug)
-          `)
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
+          `);
+        if (nts) setNotes(nts as unknown as DBNote[]);
 
         // 3. Fetch Quotes
         const { data: qts } = await supabase
@@ -122,146 +122,114 @@ export default function VaultPage() {
           .select(`
             id, text, author, created_at,
             article:articles(title, slug)
-          `)
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
+          `);
+        if (qts) setQuotes(qts as unknown as DBQuote[]);
 
         // 4. Fetch Ideas
         const { data: ids } = await supabase
           .from("ideas")
-          .select("id, content, created_at")
-          .eq("user_id", user.id)
+          .select("*")
           .order("created_at", { ascending: false });
-
-        setBookmarks((bmarks as unknown as DBBookmark[]) || []);
-        setNotes((nts as unknown as DBNote[]) || []);
-        setQuotes((qts as unknown as DBQuote[]) || []);
-        setIdeas(ids || []);
+        if (ids) setIdeas(ids);
 
       } catch (err) {
-        console.error("Error loading vault content:", err);
+        console.error("Vault data sync failure:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    const timer = setTimeout(() => {
-      fetchVaultData();
-    }, 0);
-
-    return () => clearTimeout(timer);
+    fetchVaultData();
   }, [user]);
 
-  // DELETE functions
+  // Handlers
   const handleDeleteBookmark = async (id: string) => {
     try {
-      const { error } = await supabase.from("bookmarks").delete().eq("id", id);
-      if (error) throw error;
+      await supabase.from("bookmarks").delete().eq("id", id);
       setBookmarks((prev) => prev.filter((b) => b.id !== id));
     } catch (err) {
-      console.error("Delete bookmark failed:", err);
+      console.error("Failed deleting bookmark:", err);
     }
   };
 
   const handleDeleteNote = async (id: string) => {
     try {
-      const { error } = await supabase.from("notes").delete().eq("id", id);
-      if (error) throw error;
+      await supabase.from("notes").delete().eq("id", id);
       setNotes((prev) => prev.filter((n) => n.id !== id));
     } catch (err) {
-      console.error("Delete note failed:", err);
+      console.error("Failed deleting note:", err);
     }
   };
 
   const handleDeleteQuote = async (id: string) => {
     try {
-      const { error } = await supabase.from("quotes").delete().eq("id", id);
-      if (error) throw error;
+      await supabase.from("quotes").delete().eq("id", id);
       setQuotes((prev) => prev.filter((q) => q.id !== id));
     } catch (err) {
-      console.error("Delete quote failed:", err);
+      console.error("Failed deleting quote:", err);
     }
   };
 
   const handleDeleteIdea = async (id: string) => {
     try {
-      const { error } = await supabase.from("ideas").delete().eq("id", id);
-      if (error) throw error;
+      await supabase.from("ideas").delete().eq("id", id);
       setIdeas((prev) => prev.filter((i) => i.id !== id));
     } catch (err) {
-      console.error("Delete idea failed:", err);
+      console.error("Failed deleting idea:", err);
     }
   };
 
-  // UPDATE / EDIT functions
-  const handleStartEdit = (id: string, text: string, author = "") => {
+  const handleStartEdit = (id: string, text: string, author?: string) => {
     setEditingId(id);
     setEditText(text);
-    setEditAuthor(author);
+    if (author) setEditAuthor(author);
   };
 
-  const handleSaveEdit = async (tab: VaultTab) => {
-    if (!editingId || !editText.trim()) return;
-
+  const handleSaveEdit = async (table: "notes" | "quotes" | "ideas") => {
+    if (!editingId) return;
     try {
-      if (tab === "notes") {
-        const { error } = await supabase
-          .from("notes")
-          .update({ content: editText.trim() })
-          .eq("id", editingId);
-        if (error) throw error;
-        setNotes((prev) =>
-          prev.map((n) => (n.id === editingId ? { ...n, content: editText.trim() } : n))
-        );
-      } else if (tab === "quotes") {
-        const { error } = await supabase
-          .from("quotes")
-          .update({ text: editText.trim(), author: editAuthor.trim() })
-          .eq("id", editingId);
-        if (error) throw error;
-        setQuotes((prev) =>
-          prev.map((q) =>
-            q.id === editingId ? { ...q, text: editText.trim(), author: editAuthor.trim() } : q
-          )
-        );
-      } else if (tab === "ideas") {
-        const { error } = await supabase
-          .from("ideas")
-          .update({ content: editText.trim() })
-          .eq("id", editingId);
-        if (error) throw error;
-        setIdeas((prev) =>
-          prev.map((i) => (i.id === editingId ? { ...i, content: editText.trim() } : i))
-        );
+      const payload: Record<string, string> = {};
+      if (table === "notes" || table === "ideas") {
+        payload.content = editText;
+      } else if (table === "quotes") {
+        payload.text = editText;
+        payload.author = editAuthor;
+      }
+
+      await supabase.from(table).update(payload).eq("id", editingId);
+
+      if (table === "notes") {
+        setNotes((prev) => prev.map((n) => (n.id === editingId ? { ...n, content: editText } : n)));
+      } else if (table === "quotes") {
+        setQuotes((prev) => prev.map((q) => (q.id === editingId ? { ...q, text: editText, author: editAuthor } : q)));
+      } else if (table === "ideas") {
+        setIdeas((prev) => prev.map((i) => (i.id === editingId ? { ...i, content: editText } : i)));
       }
 
       setEditingId(null);
       setEditText("");
       setEditAuthor("");
     } catch (err) {
-      console.error("Failed saving edits:", err);
+      console.error("Failed updating vault item:", err);
     }
   };
 
-  // Standalone additions (Ideas/Quotes)
   const handleAddIdea = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newIdeaText.trim()) return;
-
+    if (!newIdeaText.trim() || !user) return;
     try {
-      const { data, error } = await supabase
+      const { data: created, error } = await supabase
         .from("ideas")
-        .insert({
-          user_id: user.id,
-          content: newIdeaText.trim(),
-        })
+        .insert([{ content: newIdeaText, user_id: user.id }])
         .select()
         .single();
 
       if (error) throw error;
-      setIdeas((prev) => [data, ...prev]);
-      setNewIdeaText("");
-      setShowAddForm(false);
+      if (created) {
+        setIdeas((prev) => [created, ...prev]);
+        setNewIdeaText("");
+        setShowAddForm(false);
+      }
     } catch (err) {
       console.error("Failed adding idea:", err);
     }
@@ -269,40 +237,25 @@ export default function VaultPage() {
 
   const handleAddQuote = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newQuoteText.trim()) return;
-
+    if (!newQuoteText.trim() || !user) return;
     try {
-      const { data, error } = await supabase
+      const { data: newQuote, error } = await supabase
         .from("quotes")
-        .insert({
-          user_id: user.id,
-          text: newQuoteText.trim(),
-          author: newQuoteAuthor.trim() || "Unknown",
-        })
+        .insert([{
+          text: newQuoteText,
+          author: newQuoteAuthor || "Unknown",
+          user_id: user.id
+        }])
         .select()
         .single();
 
       if (error) throw error;
-      
-      const typedData = data as unknown as {
-        id: string;
-        text: string;
-        author: string;
-        created_at: string;
-      };
-      
-      const newQuote: DBQuote = {
-        id: typedData.id,
-        text: typedData.text,
-        author: typedData.author,
-        created_at: typedData.created_at,
-        article: null
-      };
-
-      setQuotes((prev) => [newQuote, ...prev]);
-      setNewQuoteText("");
-      setNewQuoteAuthor("");
-      setShowAddForm(false);
+      if (newQuote) {
+        setQuotes((prev) => [newQuote, ...prev]);
+        setNewQuoteText("");
+        setNewQuoteAuthor("");
+        setShowAddForm(false);
+      }
     } catch (err) {
       console.error("Failed adding quote:", err);
     }
@@ -318,10 +271,13 @@ export default function VaultPage() {
 
   return (
     <GlobalShell>
-      <div className="flex-1 w-full max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 flex flex-col gap-6">
+      <div className="flex-1 w-full max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 flex flex-col gap-6 relative">
         
+        {/* Ambient Glow */}
+        <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] rounded-full blur-[100px] bg-glow-secondary/10 -z-10 pointer-events-none" />
+
         {/* Header */}
-        <div className="flex flex-col gap-2 border-b border-border-subtle pb-6">
+        <div className="flex flex-col gap-2 border-b border-glass-edge pb-6">
           <span className="text-mono-sm text-accent-signal uppercase font-mono tracking-wider">
             Knowledge Vault
           </span>
@@ -330,11 +286,11 @@ export default function VaultPage() {
               Personal Intelligence Library
             </h1>
             
-            {/* Addstandalone resource trigger */}
+            {/* Add standalone resource trigger */}
             {(activeTab === "ideas" || activeTab === "quotes") && (
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
-                className="rounded bg-accent-signal text-text-primary px-3.5 py-1.5 text-body-sm font-semibold flex items-center gap-1.5 hover:opacity-90 transition-opacity cursor-pointer shadow-elevation"
+                className="rounded-lg bg-accent-signal text-text-primary px-3.5 py-1.5 text-body-sm font-semibold flex items-center gap-1.5 hover:opacity-90 transition-opacity cursor-pointer shadow-elevation"
               >
                 {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                 <span>{showAddForm ? "Cancel" : `Add stand-alone ${activeTab.slice(0, -1)}`}</span>
@@ -355,8 +311,8 @@ export default function VaultPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-start">
             
             {/* 1. Left Sidebar Navigation */}
-            <aside className="md:col-span-1 rounded-lg border border-border-subtle bg-bg-surface p-3 flex flex-col gap-1.5">
-              <div className="text-mono-sm text-text-tertiary font-mono uppercase px-3 py-1.5 border-b border-border-subtle/50 mb-1">
+            <GlassCard className="md:col-span-1 p-3 flex flex-col gap-1.5">
+              <div className="text-mono-sm text-text-tertiary font-mono uppercase px-3 py-1.5 border-b border-glass-edge/40 mb-1">
                 Library Indices
               </div>
               {sidebarItems.map((item) => (
@@ -369,8 +325,8 @@ export default function VaultPage() {
                   }}
                   className={`flex items-center justify-between rounded px-3 py-2.5 text-body-sm transition-colors cursor-pointer select-none ${
                     activeTab === item.id
-                      ? "bg-accent-signal-muted text-accent-signal font-medium"
-                      : "text-text-secondary hover:bg-bg-surface-raised hover:text-text-primary"
+                      ? "bg-glass-surface-raised border border-glass-edge text-accent-signal font-semibold"
+                      : "text-text-secondary hover:bg-glass-surface-raised hover:text-text-primary"
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
@@ -382,62 +338,66 @@ export default function VaultPage() {
                   </span>
                 </button>
               ))}
-            </aside>
+            </GlassCard>
 
             {/* 2. Main content display container */}
             <div className="md:col-span-3 flex flex-col gap-6">
               
               {/* Standalone Input Form */}
               {showAddForm && activeTab === "ideas" && (
-                <form onSubmit={handleAddIdea} className="rounded-lg border border-accent-signal bg-bg-surface p-4 flex flex-col gap-3">
-                  <h3 className="text-body-sm font-semibold text-text-primary">Draft Standalone Idea</h3>
-                  <textarea
-                    placeholder="Capture a concept, thesis draft, or flash idea..."
-                    value={newIdeaText}
-                    onChange={(e) => setNewIdeaText(e.target.value)}
-                    required
-                    className="w-full h-24 rounded border border-border-subtle bg-bg-canvas p-2.5 text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-signal resize-none"
-                  />
-                  <button
-                    type="submit"
-                    className="rounded bg-accent-signal text-text-primary px-3 py-1.5 text-body-sm font-semibold hover:opacity-90 self-end flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Save to Ideas</span>
-                  </button>
-                </form>
+                <GlassCard glow="primary" className="p-4">
+                  <form onSubmit={handleAddIdea} className="flex flex-col gap-3">
+                    <h3 className="text-body-sm font-semibold text-text-primary">Draft Standalone Idea</h3>
+                    <textarea
+                      placeholder="Capture a concept, thesis draft, or flash idea..."
+                      value={newIdeaText}
+                      onChange={(e) => setNewIdeaText(e.target.value)}
+                      required
+                      className="w-full h-24 rounded border border-glass-edge bg-glass-surface/50 p-2.5 text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-signal resize-none"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded bg-accent-signal text-text-primary px-3 py-1.5 text-body-sm font-semibold hover:opacity-90 self-end flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Save to Ideas</span>
+                    </button>
+                  </form>
+                </GlassCard>
               )}
 
               {showAddForm && activeTab === "quotes" && (
-                <form onSubmit={handleAddQuote} className="rounded-lg border border-accent-signal bg-bg-surface p-4 flex flex-col gap-3">
-                  <h3 className="text-body-sm font-semibold text-text-primary">Log Standalone Quote</h3>
-                  <textarea
-                    placeholder="&ldquo;Double quote text...&rdquo;"
-                    value={newQuoteText}
-                    onChange={(e) => setNewQuoteText(e.target.value)}
-                    required
-                    className="w-full h-20 rounded border border-border-subtle bg-bg-canvas p-2.5 text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-signal resize-none"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Author (e.g., Hans Morgenthau)"
-                    value={newQuoteAuthor}
-                    onChange={(e) => setNewQuoteAuthor(e.target.value)}
-                    className="w-full rounded border border-border-subtle bg-bg-canvas py-1.5 px-2.5 text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-signal"
-                  />
-                  <button
-                    type="submit"
-                    className="rounded bg-accent-signal text-text-primary px-3 py-1.5 text-body-sm font-semibold hover:opacity-90 self-end flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Save to Quotes</span>
-                  </button>
-                </form>
+                <GlassCard glow="primary" className="p-4">
+                  <form onSubmit={handleAddQuote} className="flex flex-col gap-3">
+                    <h3 className="text-body-sm font-semibold text-text-primary">Log Standalone Quote</h3>
+                    <textarea
+                      placeholder="&ldquo;Double quote text...&rdquo;"
+                      value={newQuoteText}
+                      onChange={(e) => setNewQuoteText(e.target.value)}
+                      required
+                      className="w-full h-20 rounded border border-glass-edge bg-glass-surface/50 p-2.5 text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-signal resize-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Author (e.g., Hans Morgenthau)"
+                      value={newQuoteAuthor}
+                      onChange={(e) => setNewQuoteAuthor(e.target.value)}
+                      className="w-full rounded border border-glass-edge bg-glass-surface/50 py-1.5 px-2.5 text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-signal"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded bg-accent-signal text-text-primary px-3 py-1.5 text-body-sm font-semibold hover:opacity-90 self-end flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Save to Quotes</span>
+                    </button>
+                  </form>
+                </GlassCard>
               )}
 
               {/* PDF placeholder info */}
               {activeTab === "pdfs" && (
-                <div className="rounded-lg border border-dashed border-border-subtle p-12 text-center flex flex-col gap-3 items-center justify-center">
+                <GlassCard className="p-12 text-center flex flex-col gap-3 items-center justify-center border-dashed">
                   <Folder className="h-10 w-10 text-text-tertiary" />
                   <h3 className="text-heading-sm font-display font-medium text-text-primary">PDF Storage & Paper Uploads</h3>
                   <span className="rounded bg-accent-signal-muted text-accent-signal px-2 py-0.5 text-mono-sm font-mono uppercase tracking-wider">
@@ -446,28 +406,28 @@ export default function VaultPage() {
                   <p className="text-body-sm text-text-secondary max-w-sm">
                     In the next release, this panel will host drag-and-drop uploads for research PDFs, automatically generating citation models and connecting them to your Study syllabus.
                   </p>
-                </div>
+                </GlassCard>
               )}
 
               {/* BOOKMARKS LIST */}
               {activeTab === "bookmarks" && (
                 <div className="flex flex-col gap-4">
                   {bookmarks.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border-subtle p-12 text-center text-body-sm text-text-secondary">
+                    <GlassCard className="p-12 text-center text-body-sm text-text-secondary border-dashed">
                       No bookmarks saved yet. Go read an article to bookmark it!
-                    </div>
+                    </GlassCard>
                   ) : (
                     bookmarks.map((bookmark) => (
-                      <div
+                      <GlassCard
                         key={bookmark.id}
-                        className="group relative rounded-lg border border-border-subtle bg-bg-surface p-4 flex flex-col sm:flex-row sm:items-start justify-between gap-4 hover:border-accent-signal-muted transition-colors"
+                        className="p-4 flex flex-col sm:flex-row sm:items-start justify-between gap-4"
                       >
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-3 text-mono-sm text-text-tertiary font-mono">
                             <span>{bookmark.article?.category?.icon} {bookmark.article?.category?.name}</span>
                             <span>· Saved {new Date(bookmark.created_at).toLocaleDateString()}</span>
                           </div>
-                          <h3 className="text-body-md font-semibold text-text-primary group-hover:text-accent-signal transition-colors">
+                          <h3 className="text-body-md font-semibold text-text-primary hover:text-accent-signal transition-colors">
                             <Link href={`/article/${bookmark.article?.slug || ""}`}>
                               {bookmark.article?.title}
                             </Link>
@@ -479,20 +439,20 @@ export default function VaultPage() {
                         <div className="flex items-center gap-2 sm:self-center shrink-0">
                           <Link
                             href={`/article/${bookmark.article?.slug || ""}`}
-                            className="rounded p-1.5 border border-border-subtle hover:text-accent-signal hover:border-accent-signal transition-colors"
+                            className="rounded p-1.5 border border-glass-edge hover:text-accent-signal hover:border-accent-signal transition-colors"
                             title="Open Article"
                           >
                             <ExternalLink className="h-4 w-4" />
                           </Link>
                           <button
                             onClick={() => handleDeleteBookmark(bookmark.id)}
-                            className="rounded p-1.5 border border-border-subtle text-text-secondary hover:text-data-negative hover:border-data-negative transition-colors cursor-pointer"
+                            className="rounded p-1.5 border border-glass-edge text-text-secondary hover:text-data-negative hover:border-data-negative transition-colors cursor-pointer"
                             title="Remove Bookmark"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
-                      </div>
+                      </GlassCard>
                     ))
                   )}
                 </div>
@@ -502,18 +462,18 @@ export default function VaultPage() {
               {activeTab === "notes" && (
                 <div className="flex flex-col gap-4">
                   {notes.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border-subtle p-12 text-center text-body-sm text-text-secondary">
+                    <GlassCard className="p-12 text-center text-body-sm text-text-secondary border-dashed">
                       No personal notes annotated in the vault.
-                    </div>
+                    </GlassCard>
                   ) : (
                     notes.map((note) => {
                       const isEditing = editingId === note.id;
                       return (
-                        <div
+                        <GlassCard
                           key={note.id}
-                          className="rounded-lg border border-border-subtle bg-bg-surface p-4 flex flex-col gap-3 hover:border-accent-signal-muted transition-colors"
+                          className="p-4 flex flex-col gap-3"
                         >
-                          <div className="flex items-center justify-between border-b border-border-subtle/50 pb-2">
+                          <div className="flex items-center justify-between border-b border-glass-edge/40 pb-2">
                             <div className="flex flex-col">
                               {note.article && (
                                 <Link
@@ -546,7 +506,7 @@ export default function VaultPage() {
                           </div>
 
                           {note.highlight_ref && (
-                            <div className="rounded bg-bg-canvas border-l-2 border-accent-signal p-2 text-body-sm text-text-secondary italic">
+                            <div className="rounded bg-glass-surface-raised/40 border-l-2 border-accent-signal p-2 text-body-sm text-text-secondary italic">
                               &ldquo;{note.highlight_ref.quoted_text}&rdquo;
                             </div>
                           )}
@@ -556,12 +516,12 @@ export default function VaultPage() {
                               <textarea
                                 value={editText}
                                 onChange={(e) => setEditText(e.target.value)}
-                                className="w-full h-20 rounded border border-border-subtle bg-bg-canvas p-2 text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-signal resize-none"
+                                className="w-full h-20 rounded border border-glass-edge bg-glass-surface/50 p-2 text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-signal resize-none"
                               />
                               <div className="flex items-center gap-2 self-end">
                                 <button
                                   onClick={() => setEditingId(null)}
-                                  className="rounded border border-border-subtle px-2.5 py-1 text-mono-sm font-mono uppercase text-text-secondary cursor-pointer hover:text-text-primary"
+                                  className="rounded border border-glass-edge px-2.5 py-1 text-mono-sm font-mono uppercase text-text-secondary cursor-pointer hover:text-text-primary"
                                 >
                                   Cancel
                                 </button>
@@ -579,7 +539,7 @@ export default function VaultPage() {
                               {note.content}
                             </p>
                           )}
-                        </div>
+                        </GlassCard>
                       );
                     })
                   )}
@@ -590,16 +550,16 @@ export default function VaultPage() {
               {activeTab === "quotes" && (
                 <div className="flex flex-col gap-4">
                   {quotes.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border-subtle p-12 text-center text-body-sm text-text-secondary">
+                    <GlassCard className="p-12 text-center text-body-sm text-text-secondary border-dashed">
                       No logged quotes found. Draft a stand-alone quote above.
-                    </div>
+                    </GlassCard>
                   ) : (
                     quotes.map((quote) => {
                       const isEditing = editingId === quote.id;
                       return (
-                        <div
+                        <GlassCard
                           key={quote.id}
-                          className="rounded-lg border border-border-subtle bg-bg-surface p-5 flex flex-col gap-3 hover:border-accent-signal-muted transition-colors relative"
+                          className="p-5 flex flex-col gap-3 relative"
                         >
                           <div className="absolute top-4 right-4 flex items-center gap-1">
                             <button
@@ -623,18 +583,18 @@ export default function VaultPage() {
                               <textarea
                                 value={editText}
                                 onChange={(e) => setEditText(e.target.value)}
-                                className="w-full h-20 rounded border border-border-subtle bg-bg-canvas p-2 text-body-sm text-text-primary focus:outline-none focus:border-accent-signal resize-none"
+                                className="w-full h-20 rounded border border-glass-edge bg-glass-surface/50 p-2 text-body-sm text-text-primary focus:outline-none focus:border-accent-signal resize-none"
                               />
                               <input
                                 type="text"
                                 value={editAuthor}
                                 onChange={(e) => setEditAuthor(e.target.value)}
-                                className="w-full rounded border border-border-subtle bg-bg-canvas py-1 px-2.5 text-body-sm text-text-primary focus:outline-none"
+                                className="w-full rounded border border-glass-edge bg-glass-surface/50 py-1 px-2.5 text-body-sm text-text-primary focus:outline-none"
                               />
                               <div className="flex items-center gap-2 self-end mt-1">
                                 <button
                                   onClick={() => setEditingId(null)}
-                                  className="rounded border border-border-subtle px-2.5 py-1 text-mono-sm font-mono uppercase text-text-secondary cursor-pointer"
+                                  className="rounded border border-glass-edge px-2.5 py-1 text-mono-sm font-mono uppercase text-text-secondary cursor-pointer"
                                 >
                                   Cancel
                                 </button>
@@ -667,7 +627,7 @@ export default function VaultPage() {
                               </div>
                             </div>
                           )}
-                        </div>
+                        </GlassCard>
                       );
                     })
                   )}
@@ -678,28 +638,28 @@ export default function VaultPage() {
               {activeTab === "ideas" && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {ideas.length === 0 ? (
-                    <div className="sm:col-span-2 rounded-lg border border-dashed border-border-subtle p-12 text-center text-body-sm text-text-secondary">
+                    <GlassCard className="sm:col-span-2 p-12 text-center text-body-sm text-text-secondary border-dashed">
                       No conceptual ideas logged yet. Draft a standalone idea above.
-                    </div>
+                    </GlassCard>
                   ) : (
                     ideas.map((idea) => {
                       const isEditing = editingId === idea.id;
                       return (
-                        <div
+                        <GlassCard
                           key={idea.id}
-                          className="rounded-lg border border-border-subtle bg-bg-surface p-4 flex flex-col justify-between gap-4 hover:border-accent-signal-muted transition-colors"
+                          className="p-4 flex flex-col justify-between gap-4"
                         >
                           {isEditing ? (
                             <div className="flex flex-col gap-2">
                               <textarea
                                 value={editText}
                                 onChange={(e) => setEditText(e.target.value)}
-                                className="w-full h-24 rounded border border-border-subtle bg-bg-canvas p-2 text-body-sm text-text-primary focus:outline-none resize-none"
+                                className="w-full h-24 rounded border border-glass-edge bg-glass-surface/50 p-2 text-body-sm text-text-primary focus:outline-none resize-none"
                               />
                               <div className="flex items-center gap-2 self-end">
                                 <button
                                   onClick={() => setEditingId(null)}
-                                  className="rounded border border-border-subtle px-2 py-0.5 text-mono-sm font-mono uppercase text-text-secondary cursor-pointer"
+                                  className="rounded border border-glass-edge px-2 py-0.5 text-mono-sm font-mono uppercase text-text-secondary cursor-pointer"
                                 >
                                   Cancel
                                 </button>
@@ -717,7 +677,7 @@ export default function VaultPage() {
                               <p className="text-body-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
                                 {idea.content}
                               </p>
-                              <div className="flex items-center justify-between border-t border-border-subtle/40 pt-2 text-[10px] text-text-tertiary font-mono">
+                              <div className="flex items-center justify-between border-t border-glass-edge/40 pt-2 text-[10px] text-text-tertiary font-mono">
                                 <span>Logged {new Date(idea.created_at).toLocaleDateString()}</span>
                                 <div className="flex items-center gap-1.5">
                                   <button
@@ -736,7 +696,7 @@ export default function VaultPage() {
                               </div>
                             </>
                           )}
-                        </div>
+                        </GlassCard>
                       );
                     })
                   )}

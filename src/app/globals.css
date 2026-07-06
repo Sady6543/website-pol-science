@@ -3,6 +3,7 @@
 /* ─── Color tokens ─────────────────────────────────────────── */
 :root {
   --bg-canvas: #0A0B0D;
+  --bg-canvas-deep: radial-gradient(ellipse at top, #1a1d24 0%, #0a0b0d 45%, #050506 100%);
   --bg-surface: #141519;
   --bg-surface-raised: #1B1D22;
   --border-subtle: #26282E;
@@ -19,12 +20,19 @@
   --importance-low: #5D6068;
   --shadow-elevation: 0 8px 24px rgba(0, 0, 0, 0.35);
   --focus-ring: 0 0 0 2px var(--accent-signal);
+
+  /* Glass colors (Dark default) */
+  --bg-surface-glass: rgba(15, 15, 18, 0.4);
+  --bg-surface-glass-raised: rgba(20, 20, 24, 0.5);
+  --border-glass-edge: rgba(255, 255, 255, 0.08);
+  --border-glass-edge-hover: rgba(255, 255, 255, 0.14);
 }
 
 /* ─── System color scheme detection (first load, before JS) ── */
 @media (prefers-color-scheme: light) {
   :root:not(.dark):not(.light) {
     --bg-canvas: #FFFFFF;
+    --bg-canvas-deep: #FFFFFF;
     --bg-surface: #F6F7F9;
     --bg-surface-raised: #FFFFFF;
     --border-subtle: #E4E6EA;
@@ -40,11 +48,18 @@
     --importance-medium: #D97706;
     --importance-low: #9599A3;
     --shadow-elevation: 0 8px 24px rgba(0, 0, 0, 0.1);
+
+    /* Glass colors (Light default) */
+    --bg-surface-glass: rgba(246, 247, 249, 0.6);
+    --bg-surface-glass-raised: rgba(255, 255, 255, 0.7);
+    --border-glass-edge: rgba(0, 0, 0, 0.06);
+    --border-glass-edge-hover: rgba(0, 0, 0, 0.12);
   }
 }
 
 .light {
   --bg-canvas: #FFFFFF;
+  --bg-canvas-deep: #FFFFFF;
   --bg-surface: #F6F7F9;
   --bg-surface-raised: #FFFFFF;
   --border-subtle: #E4E6EA;
@@ -61,6 +76,12 @@
   --importance-low: #9599A3;
   --shadow-elevation: 0 8px 24px rgba(0, 0, 0, 0.1);
   --focus-ring: 0 0 0 2px var(--accent-signal);
+
+  /* Glass colors (Light override) */
+  --bg-surface-glass: rgba(246, 247, 249, 0.6);
+  --bg-surface-glass-raised: rgba(255, 255, 255, 0.7);
+  --border-glass-edge: rgba(0, 0, 0, 0.06);
+  --border-glass-edge-hover: rgba(0, 0, 0, 0.12);
 }
 
 @theme {
@@ -79,6 +100,15 @@
   --color-importance-high: var(--importance-high);
   --color-importance-medium: var(--importance-medium);
   --color-importance-low: var(--importance-low);
+
+  /* Glassmorphism theme extensions */
+  --color-glass-surface: var(--bg-surface-glass);
+  --color-glass-surface-raised: var(--bg-surface-glass-raised);
+  --color-glass-edge: var(--border-glass-edge);
+  --color-glass-edge-hover: var(--border-glass-edge-hover);
+  --color-glow-primary: #3D6BFF;
+  --color-glow-secondary: #4CC9F0;
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.45);
 
   --font-display: var(--font-display);
   --font-body: var(--font-body);
@@ -160,10 +190,10 @@
 
 /* ─── Base styles ──────────────────────────────────────────── */
 body {
-  background-color: var(--bg-canvas);
+  background: var(--bg-canvas-deep);
   color: var(--text-primary);
   font-family: var(--font-body);
-  transition: background-color 150ms ease-in-out, color 150ms ease-in-out;
+  transition: background 150ms ease-in-out, color 150ms ease-in-out;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -222,19 +252,16 @@ body {
 
 /* ─── Glassmorphism surfaces ───────────────────────────────── */
 .glass-panel {
-  background-color: rgba(20, 21, 25, 0.8);
+  background-color: var(--bg-surface-glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-elevation);
+  border: 1px solid var(--border-glass-edge);
+  box-shadow: var(--shadow-glass);
+  transition: border-color 150ms ease, background-color 150ms ease;
 }
 
-.light .glass-panel {
-  background-color: rgba(246, 247, 249, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-elevation);
+.glass-panel:hover {
+  border-color: var(--border-glass-edge-hover);
 }
 
 /* ─── Skeleton shimmer animation ───────────────────────────── */
@@ -339,5 +366,21 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .heatmap-cell:hover {
     transform: none;
+  }
+}
+
+/* ─── Reduced transparency fallbacks ────────────────────── */
+@media (prefers-reduced-transparency: reduce) {
+  :root, .light {
+    --bg-surface-glass: var(--bg-surface) !important;
+    --bg-surface-glass-raised: var(--bg-surface-raised) !important;
+    --border-glass-edge: var(--border-subtle) !important;
+    --border-glass-edge-hover: var(--border-subtle) !important;
+  }
+  .glass-panel,
+  .backdrop-blur-card,
+  .backdrop-blur-modal {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 }

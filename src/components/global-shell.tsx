@@ -159,7 +159,7 @@ export function GlobalShell({ children }: GlobalShellProps) {
       </a>
 
       {/* ── 1. Global Header ───────────────────────────────────── */}
-      <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-border-subtle bg-bg-canvas/95 backdrop-blur-sm px-4 md:px-6">
+      <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-glass-edge bg-glass-surface/80 backdrop-blur-card px-4 md:px-6">
         {/* Left: Logo & Search */}
         <div className="flex items-center gap-4 flex-1 md:flex-initial">
           <Link
@@ -173,7 +173,7 @@ export function GlobalShell({ children }: GlobalShellProps) {
           {/* Search bar (desktop) */}
           <button
             onClick={() => setCommandPaletteOpen(true)}
-            className="hidden md:flex items-center gap-2.5 w-60 rounded-md border border-border-subtle bg-bg-surface px-3 py-1.5 text-body-sm text-text-tertiary transition-colors hover:border-accent-signal/50 hover:text-text-secondary cursor-pointer"
+            className="hidden md:flex items-center gap-2.5 w-60 rounded-md border border-glass-edge bg-glass-surface/50 px-3 py-1.5 text-body-sm text-text-tertiary transition-colors hover:border-glass-edge-hover hover:text-text-secondary cursor-pointer"
             aria-label="Open command palette (⌘K)"
           >
             <Search className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -316,7 +316,7 @@ export function GlobalShell({ children }: GlobalShellProps) {
       <div className="flex-1 flex w-full relative overflow-hidden">
         {/* Left Navigation Rail (Desktop) */}
         <aside
-          className="hidden md:flex flex-col w-16 lg:w-60 border-r border-border-subtle bg-bg-canvas py-6 shrink-0"
+          className="hidden md:flex flex-col w-16 lg:w-60 border-r border-glass-edge bg-glass-surface/20 py-6 shrink-0 backdrop-blur-card"
           aria-label="Sidebar navigation"
         >
           <nav className="flex-1 px-3 flex flex-col gap-1" aria-label="Main navigation">
@@ -357,7 +357,7 @@ export function GlobalShell({ children }: GlobalShellProps) {
         {/* ── 4. AI Assistant Drawer ─────────────────────────── */}
         {isAssistantOpen && (
           <aside
-            className="fixed inset-y-0 right-0 z-40 w-full sm:w-[400px] xl:w-[360px] border-l border-border-subtle bg-bg-surface shadow-elevation flex flex-col pt-14 xl:pt-0 xl:static xl:h-[calc(100vh-3.5rem)] shrink-0"
+            className="fixed inset-y-0 right-0 z-40 w-full sm:w-[400px] xl:w-[360px] border-l border-glass-edge bg-glass-surface-raised/90 backdrop-blur-card shadow-glass flex flex-col pt-14 xl:pt-0 xl:static xl:h-[calc(100vh-3.5rem)] shrink-0"
             aria-label="AI Assistant panel"
             role="complementary"
           >
@@ -507,7 +507,7 @@ export function GlobalShell({ children }: GlobalShellProps) {
 
       {/* ── 5. Mobile Bottom Tab Bar ───────────────────────────── */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-30 h-16 border-t border-border-subtle bg-bg-canvas/95 backdrop-blur-sm px-2 flex items-center justify-around select-none"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 h-16 border-t border-glass-edge bg-glass-surface/90 backdrop-blur-card px-2 flex items-center justify-around select-none"
         aria-label="Bottom navigation"
       >
         {navItems.slice(0, 5).map((item) => (

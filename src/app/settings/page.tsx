@@ -22,6 +22,8 @@ import {
   BookOpen,
 } from "lucide-react";
 
+import { GlassCard } from "@/components/ui/glass-card";
+
 // ─── Section wrapper ──────────────────────────────────────────
 function SettingsSection({
   title,
@@ -35,8 +37,8 @@ function SettingsSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-border-subtle bg-bg-surface overflow-hidden" aria-label={title}>
-      <div className="flex items-center gap-3 border-b border-border-subtle px-5 py-4">
+    <GlassCard className="overflow-hidden" glow={title === "Appearance" ? "primary" : "none"}>
+      <div className="flex items-center gap-3 border-b border-glass-edge px-5 py-4">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-signal/10 border border-accent-signal/20 shrink-0">
           {icon}
         </div>
@@ -46,7 +48,7 @@ function SettingsSection({
         </div>
       </div>
       <div className="p-5 flex flex-col gap-4">{children}</div>
-    </section>
+    </GlassCard>
   );
 }
 
@@ -63,7 +65,7 @@ function SettingRow({
   htmlFor?: string;
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2 border-b border-border-subtle/50 last:border-0">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2 border-b border-glass-edge/40 last:border-0">
       <div className="min-w-0">
         <label
           htmlFor={htmlFor}
