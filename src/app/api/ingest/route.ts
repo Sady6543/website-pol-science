@@ -34,8 +34,8 @@ export async function GET(request: Request) {
   }
 
   // 2. Initialize Supabase Client INSIDE the request handler (prevents build-time compiler errors)
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder-project.supabase.co";
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE1OTg4Mzg0MDAsImV4cCI6MTkwNDQwOTYwMH0.dummy";
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://aaavhqqyznrleytwxqkf.supabase.co";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhYXZocXF5em5ybGV5dHd4cWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwODE1NDcsImV4cCI6MjA5ODY1NzU0N30.cDI4AG27P8lCrHo2M98M2Pg0eJzgbrBPOpowI9m64AY";
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
   const results: Record<string, unknown> = {};
@@ -148,10 +148,10 @@ export async function GET(request: Request) {
     const tslaPayload = { ticker: "TSLA", price: 268.40 + (Math.random() - 0.5) * 5, change: "-2.4%", changeType: "negative" };
 
     await supabase.from("live_data_cache").upsert([
-      { key: "stocks:SPX", payload: spxPayload, updated_at: new Date().toISOString() },
-      { key: "stocks:COMP", payload: nasdaqPayload, updated_at: new Date().toISOString() },
-      { key: "stocks:AAPL", payload: aaplPayload, updated_at: new Date().toISOString() },
-      { key: "stocks:TSLA", payload: tslaPayload, updated_at: new Date().toISOString() }
+      { key: "stocks:SPX", value: spxPayload, updated_at: new Date().toISOString() },
+      { key: "stocks:COMP", value: nasdaqPayload, updated_at: new Date().toISOString() },
+      { key: "stocks:AAPL", value: aaplPayload, updated_at: new Date().toISOString() },
+      { key: "stocks:TSLA", value: tslaPayload, updated_at: new Date().toISOString() }
     ]);
     results.stocks = { status: "success", count: 4 };
 
@@ -161,9 +161,9 @@ export async function GET(request: Request) {
     const solPayload = { symbol: "SOL", price: 142.80 + (Math.random() - 0.5) * 3, change: "+3.6%", changeType: "positive", high: 145, low: 138 };
 
     await supabase.from("live_data_cache").upsert([
-      { key: "crypto:BTC", payload: btcPayload, updated_at: new Date().toISOString() },
-      { key: "crypto:ETH", payload: ethPayload, updated_at: new Date().toISOString() },
-      { key: "crypto:SOL", payload: solPayload, updated_at: new Date().toISOString() }
+      { key: "crypto:BTC", value: btcPayload, updated_at: new Date().toISOString() },
+      { key: "crypto:ETH", value: ethPayload, updated_at: new Date().toISOString() },
+      { key: "crypto:SOL", value: solPayload, updated_at: new Date().toISOString() }
     ]);
     results.crypto = { status: "success", count: 3 };
 
@@ -173,9 +173,9 @@ export async function GET(request: Request) {
     const gbpUsd = { pair: "GBP/USD", rate: 1.2940 + (Math.random() - 0.5) * 0.001, change: "+0.15%", changeType: "positive" };
 
     await supabase.from("live_data_cache").upsert([
-      { key: "fx:USD_INR", payload: usdInr, updated_at: new Date().toISOString() },
-      { key: "fx:EUR_USD", payload: eurUsd, updated_at: new Date().toISOString() },
-      { key: "fx:GBP_USD", payload: gbpUsd, updated_at: new Date().toISOString() }
+      { key: "fx:USD_INR", value: usdInr, updated_at: new Date().toISOString() },
+      { key: "fx:EUR_USD", value: eurUsd, updated_at: new Date().toISOString() },
+      { key: "fx:GBP_USD", value: gbpUsd, updated_at: new Date().toISOString() }
     ]);
     results.fx = { status: "success", count: 3 };
 
@@ -185,9 +185,9 @@ export async function GET(request: Request) {
     const newYork = { city: "New York", temp: 22 + Math.round((Math.random() - 0.5) * 3), condition: "Rainy", humidity: "85%", windSpeed: "14 km/h" };
 
     await supabase.from("live_data_cache").upsert([
-      { key: "weather:NewDelhi", payload: newDelhi, updated_at: new Date().toISOString() },
-      { key: "weather:London", payload: london, updated_at: new Date().toISOString() },
-      { key: "weather:NewYork", payload: newYork, updated_at: new Date().toISOString() }
+      { key: "weather:NewDelhi", value: newDelhi, updated_at: new Date().toISOString() },
+      { key: "weather:London", value: london, updated_at: new Date().toISOString() },
+      { key: "weather:NewYork", value: newYork, updated_at: new Date().toISOString() }
     ]);
     results.weather = { status: "success", count: 3 };
 
@@ -200,7 +200,7 @@ export async function GET(request: Request) {
 
     await supabase.from("live_data_cache").upsert({
       key: "earthquakes",
-      payload: { list: mockQuakes },
+      value: { list: mockQuakes },
       updated_at: new Date().toISOString()
     });
     results.earthquakes = { status: "success", count: 3 };
@@ -213,7 +213,7 @@ export async function GET(request: Request) {
 
     await supabase.from("live_data_cache").upsert({
       key: "launches",
-      payload: { list: mockLaunches },
+      value: { list: mockLaunches },
       updated_at: new Date().toISOString()
     });
     results.launches = { status: "success", count: 2 };
