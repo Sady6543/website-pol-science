@@ -57,6 +57,10 @@ export default function LivePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [timeDiffs, setTimeDiffs] = useState<Record<string, string>>({});
   
+  // Debug diagnostics
+  const [debugUrl, setDebugUrl] = useState<string>("");
+  const [debugError, setDebugError] = useState<string>("");
+  
   // Live World Clocks state
   const [clocks, setClocks] = useState({
     delhi: "",
@@ -67,7 +71,12 @@ export default function LivePage() {
 
   const fetchLiveData = async () => {
     try {
-      const { data: rows } = await supabase.from("live_data_cache").select("*");
+      const { data: rows, error } = await supabase.from("live_data_cache").select("*");
+      if (error) {
+        setDebugError(error.message || JSON.stringify(error));
+      } else {
+        setDebugError("");
+      }
       if (rows) {
         const mapped = rows.reduce((acc, row) => {
           acc[row.key] = row;
@@ -75,7 +84,8 @@ export default function LivePage() {
         }, {} as Record<string, CacheRow>);
         setData(mapped);
       }
-    } catch (err) {
+    } catch (err: any) {
+      setDebugError(err?.message || String(err));
       console.error("Failed loading cached live terminal parameters:", err);
     }
   };
@@ -85,17 +95,20 @@ export default function LivePage() {
       setRefreshing(true);
       await fetch("/api/ingest?type=all");
       await fetchLiveData();
-    } catch (err) {
+    } catch (err: any) {
+      setDebugError("Trigger Ingest error: " + (err?.message || String(err)));
       console.error("Ingestion triggers failed:", err);
     } finally {
       setRefreshing(false);
     }
   };
 
+
   // Initial load
   useEffect(() => {
     const init = async () => {
       setLoading(true);
+      setDebugUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || "not found / empty");
       await fetchLiveData();
       setLoading(false);
     };
@@ -386,7 +399,26 @@ export default function LivePage() {
                   )) || <span className="text-mono-sm text-text-tertiary italic">No active cache</span>}
                 </div>
               </GlassCard>
+            </div>
 
+            {/* Diagnostics Panel */}
+            <div className="mt-8 p-4 rounded-lg border border-glass-edge bg-glass-surface/30 backdrop-blur-md text-mono-sm text-text-secondary flex flex-col gap-2 max-w-4xl mx-auto">
+              <div className="text-accent-signal font-semibold tracking-wider uppercase text-[11px] flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-accent-signal animate-pulse"></span>
+                <span>Diagnostics Panel</span>
+              </div>
+              <div className="flex flex-col gap-1 text-[11px]">
+                <div>URL being requested by browser: <span className="text-text-primary font-bold font-mono">{debugUrl}</span></div>
+                {debugError ? (
+                  <div className="text-data-negative font-bold font-mono bg-data-negative/10 px-2 py-1 rounded mt-1">
+                    Error message: {debugError}
+                  </div>
+                ) : (
+                  <div className="text-data-positive font-bold font-mono bg-data-positive/10 px-2 py-1 rounded mt-1">
+                    Connection Status: Connected (Cached records found: {Object.keys(data).length})
+                  </div>
+                )}
+              </div>
             </div>
 
           </div>
