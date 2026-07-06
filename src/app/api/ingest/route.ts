@@ -34,9 +34,15 @@ export async function GET(request: Request) {
   }
 
   // 2. Initialize Supabase Client INSIDE the request handler (prevents build-time compiler errors)
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://aaavhqqyznrleytwxqkf.supabase.co";
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhYXZocXF5em5ybGV5dHd4cWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwODE1NDcsImV4cCI6MjA5ODY1NzU0N30.cDI4AG27P8lCrHo2M98M2Pg0eJzgbrBPOpowI9m64AY";
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  // Use .trim() to remove any trailing whitespace that CLI tools may add
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "https://aaavhqqyznrleytwxqkf.supabase.co").trim();
+  // Prefer service role key on server (bypasses RLS), fall back to anon key, then hardcoded
+  const supabaseKey = (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhYXZocXF5em5ybGV5dHd4cWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwODE1NDcsImV4cCI6MjA5ODY1NzU0N30.cDI4AG27P8lCrHo2M98M2Pg0eJzgbrBPOpowI9m64AY"
+  ).trim();
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   const results: Record<string, unknown> = {};
 
