@@ -409,6 +409,7 @@ export default function LivePage() {
               </div>
               <div className="flex flex-col gap-1 text-[11px]">
                 <div>URL being requested by browser: <span className="text-text-primary font-bold font-mono">{debugUrl}</span></div>
+                <div>Anon Key being used by client: <span className="text-text-primary font-bold font-mono">{(supabase as any).supabaseKey ? `${(supabase as any).supabaseKey.substring(0, 15)}...${(supabase as any).supabaseKey.slice(-10)}` : "not found"}</span></div>
                 {debugError ? (
                   <div className="text-data-negative font-bold font-mono bg-data-negative/10 px-2 py-1 rounded mt-1">
                     Error message: {debugError}
