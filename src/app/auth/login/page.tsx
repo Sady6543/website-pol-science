@@ -67,7 +67,11 @@ export default function LoginPage() {
       }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "An error occurred.";
-      setMessage(errMsg);
+      if (errMsg.toLowerCase().includes("fetch") || errMsg.toLowerCase().includes("failed") || errMsg.toLowerCase().includes("network")) {
+        setMessage("Database connection failed. Please click 'Guest Sandbox' below to enter Demo Mode instantly!");
+      } else {
+        setMessage(errMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -89,6 +93,28 @@ export default function LoginPage() {
       const errMsg = err instanceof Error ? err.message : "An OAuth error occurred.";
       setMessage(errMsg);
     }
+  };
+
+  const handleGuestSandbox = () => {
+    const mockUser = {
+      user: {
+        id: "demo-user-id",
+        email: "guest@knowledgeos.org",
+        user_metadata: { display_name: "Guest Sandbox" },
+      },
+      profile: {
+        id: "demo-user-id",
+        display_name: "Guest Sandbox",
+        theme: "dark",
+        accent_color: "#3D6BFF",
+        density: "comfortable"
+      }
+    };
+    localStorage.setItem("knowledgeos_demo_user", JSON.stringify(mockUser));
+    setMessage("Success! Launching Guest Sandbox...");
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 800);
   };
 
   return (
@@ -215,13 +241,13 @@ export default function LoginPage() {
           >
             <span>Cancel</span>
           </Link>
-          <Link
-            href="/"
-            className="text-text-secondary hover:text-accent-signal flex items-center gap-1"
+          <button
+            onClick={handleGuestSandbox}
+            className="text-text-secondary hover:text-accent-signal flex items-center gap-1 cursor-pointer bg-transparent border-0 outline-none p-0 font-mono uppercase"
           >
             <span>Guest Sandbox</span>
             <ArrowRight className="h-3 w-3" />
-          </Link>
+          </button>
         </div>
       </div>
     </div>

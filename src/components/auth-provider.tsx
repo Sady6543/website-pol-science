@@ -64,10 +64,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const getInitialSession = async () => {
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
-        if (initialSession?.user) {
+        if (initialSession) {
+          setSession(initialSession);
+          setUser(initialSession.user);
           await fetchProfile(initialSession.user.id);
+        } else {
+          // Check local storage for mock demo user fallback
+          const mockUserStr = localStorage.getItem("knowledgeos_demo_user");
+          if (mockUserStr) {
+            const parsed = JSON.parse(mockUserStr);
+            setUser(parsed.user);
+            setProfile(parsed.profile);
+          }
         }
       } catch (err) {
         console.error("Error checking initial auth session:", err);
@@ -80,14 +88,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Session listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      setSession(newSession);
-      const currentUser = newSession?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
+      if (newSession) {
+        setSession(newSession);
+        const currentUser = newSession.user;
+        setUser(currentUser);
         await fetchProfile(currentUser.id);
       } else {
-        setProfile(null);
+        // Only clear if there's no active mock user in localStorage
+        const mockUserStr = localStorage.getItem("knowledgeos_demo_user");
+        if (mockUserStr) {
+          const parsed = JSON.parse(mockUserStr);
+          setUser(parsed.user);
+          setProfile(parsed.profile);
+        } else {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+        }
       }
       setLoading(false);
     });
@@ -110,7 +127,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     setLoading(true);
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn("Supabase signout skipped:", e);
+    }
+    localStorage.removeItem("knowledgeos_demo_user");
     setUser(null);
     setProfile(null);
     setSession(null);
