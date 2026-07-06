@@ -61,8 +61,7 @@ export async function GET(request: Request) {
       difficulty: "intermediate",
       source_name: "Debug",
       source_url: "https://debug-test.com/" + testSlug,
-      published_at: new Date().toISOString(),
-      key_points: ["test"]
+      published_at: new Date().toISOString()
     }).select("id");
     return NextResponse.json({ 
       debugUrl, debugKey, debugSvc, articleCount: count,
@@ -167,8 +166,7 @@ export async function GET(request: Request) {
               difficulty: "intermediate",
               source_name: article.source?.name || "News Outlet",
               source_url: article.url,
-              published_at: article.publishedAt || new Date().toISOString(),
-              key_points: [article.title, summaryText].filter(Boolean)
+              published_at: article.publishedAt || new Date().toISOString()
             });
 
             if (!insertError) {
