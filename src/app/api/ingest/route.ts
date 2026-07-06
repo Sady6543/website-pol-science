@@ -40,12 +40,38 @@ export async function GET(request: Request) {
     const debugKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "MISSING").substring(0, 30);
     const debugSvc = (process.env.SUPABASE_SERVICE_ROLE_KEY || "MISSING").substring(0, 30);
     const { createClient: cc } = await import("@supabase/supabase-js");
-    const sb = cc(
-      (process.env.NEXT_PUBLIC_SUPABASE_URL || "https://aaavhqqyznrleytwxqkf.supabase.co").trim(),
-      (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhYXZocXF5em5ybGV5dHd4cWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwODE1NDcsImV4cCI6MjA5ODY1NzU0N30.cDI4AG27P8lCrHo2M98M2Pg0eJzgbrBPOpowI9m64AY").trim()
-    );
+    const realUrl = "https://aaavhqqyznrleytwxqkf.supabase.co";
+    const realKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhYXZocXF5em5ybGV5dHd4cWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwODE1NDcsImV4cCI6MjA5ODY1NzU0N30.cDI4AG27P8lCrHo2M98M2Pg0eJzgbrBPOpowI9m64AY").trim();
+    const sb = cc(realUrl, realKey);
+    // Count articles
     const { count } = await sb.from("articles").select("*", { count: "exact", head: true });
-    return NextResponse.json({ debugUrl, debugKey, debugSvc, articleCount: count });
+    // Get first category
+    const { data: cats } = await sb.from("categories").select("id, slug").limit(1);
+    const catId = cats?.[0]?.id || null;
+    // Try a test insert
+    const testSlug = "debug-test-" + Date.now();
+    const { data: insertData, error: insertError } = await sb.from("articles").insert({
+      slug: testSlug,
+      title: "Debug Test Insert " + Date.now(),
+      summary: "Debug test",
+      body: "Debug test body",
+      category_id: catId,
+      importance: 2,
+      reading_time_minutes: 1,
+      difficulty: "intermediate",
+      source_name: "Debug",
+      source_url: "https://debug-test.com/" + testSlug,
+      published_at: new Date().toISOString(),
+      key_points: ["test"]
+    }).select("id");
+    return NextResponse.json({ 
+      debugUrl, debugKey, debugSvc, articleCount: count,
+      testInsertSuccess: !insertError,
+      testInsertId: insertData?.[0]?.id || null,
+      testInsertError: insertError ? { msg: insertError.message, code: insertError.code, details: insertError.details } : null,
+      resolvedUrl: realUrl,
+      keyUsed: realKey.substring(0, 40)
+    });
   }
 
   // 2. Initialize Supabase Client INSIDE the request handler (prevents build-time compiler errors)
