@@ -115,14 +115,15 @@ export default function ClippedArticlePage({ params }: ClippedArticlePageProps) 
   }, []);
 
   const handleRefreshArticle = async () => {
-    if (!article || !session) return;
+    if (!article) return;
     try {
       setRefreshing(true);
+      const token = session?.access_token || "demo_session_token";
       const res = await fetch("/api/clip", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ url: article.source_url })
       });

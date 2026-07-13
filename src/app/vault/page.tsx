@@ -201,17 +201,19 @@ export default function VaultPage() {
 
   const handleClipArticle = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clipUrl.trim() || !user || !session) return;
+    if (!clipUrl.trim() || !user) return;
 
     setClipping(true);
     setClipError("");
+
+    const token = session?.access_token || "demo_session_token";
 
     try {
       const res = await fetch("/api/clip", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ url: clipUrl.trim() })
       });

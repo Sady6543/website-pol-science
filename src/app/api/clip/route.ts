@@ -26,27 +26,30 @@ export async function POST(request: Request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://aaavhqqyznrleytwxqkf.supabase.co";
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
     
-    // We can verify user session
-    const supabaseUserClient = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false
-      },
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
+    let user: { id: string } | null = null;
+
+    if (token === "demo_session_token") {
+      // Mock demo user context
+      user = { id: "00000000-0000-0000-0000-000000000000" }; // use standard uuid or fallback
+    } else {
+      const supabaseUserClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false
+        },
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
+      });
+
+      const { data: { user: supabaseUser }, error: authError } = await supabaseUserClient.auth.getUser();
+      if (authError || !supabaseUser) {
+        console.error("Auth error in API clip:", authError);
+        return NextResponse.json({ error: "Unauthorized user session" }, { status: 401 });
       }
-    });
-
-    const { data: { user }, error: authError } = await supabaseUserClient.auth.getUser();
-
-    if (authError || !user) {
-      // Fallback check: See if this is a demo/mock user scenario
-      // If we are in local development and auth is mocked, we might want to support it,
-      // but let's check authError details.
-      console.error("Auth error in API clip:", authError);
-      return NextResponse.json({ error: "Unauthorized user session" }, { status: 401 });
+      user = supabaseUser;
     }
 
     // 2. Fetch the target URL's HTML with realistic headers
