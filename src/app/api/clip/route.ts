@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { Readability } from "@mozilla/readability";
-import { JSDOM } from "jsdom";
+import * as cheerio from "cheerio";
 import sanitizeHtml from "sanitize-html";
 
-// Server-side initialization of Supabase client using Service Role to bypass potential RLS or anon restrictions when inserting on behalf of users,
-// or we can verify the user's authorization header and use user-scoped client.
-// Let's obtain the token from authorization header to identify the user correctly.
+// Server-side initialization of Supabase client using Service Role to bypass potential RLS or anon restrictions when inserting on behalf of users.
 export async function POST(request: Request) {
   try {
     const { url } = await request.json();
@@ -78,36 +75,68 @@ export async function POST(request: Request) {
       }, { status: 422 });
     }
 
-    // 3. Parse with JSDOM and Readability
-    const dom = new JSDOM(html, { url });
-    const document = dom.window.document;
+    // 3. Parse with Cheerio (lightweight, runs perfectly in Vercel Serverless environment)
+    const $ = cheerio.load(html);
 
-    // Retrieve lead image from Open Graph or Twitter tags as fallback
-    let leadImage = "";
-    const ogImage = document.querySelector('meta[property="og:image"]');
-    const twitterImage = document.querySelector('meta[name="twitter:image"]');
-    const itemPropImage = document.querySelector('meta[itemprop="image"]');
-    
-    if (ogImage) {
-      leadImage = ogImage.getAttribute("content") || "";
-    } else if (twitterImage) {
-      leadImage = twitterImage.getAttribute("content") || "";
-    } else if (itemPropImage) {
-      leadImage = itemPropImage.getAttribute("content") || "";
+    // Retrieve title
+    const title = $("title").text().trim() || 
+                  $('meta[property="og:title"]').attr("content") || 
+                  $("h1").first().text().trim() || 
+                  "Untitled Article";
+
+    // Retrieve byline/author
+    const author = $('meta[name="author"]').attr("content") || 
+                   $('meta[property="article:author"]').attr("content") || 
+                   $(".author, [class*='author'], .byline, [class*='byline']").first().text().trim() || 
+                   null;
+
+    // Retrieve lead image
+    const leadImage = $('meta[property="og:image"]').attr("content") || 
+                      $('meta[name="twitter:image"]').attr("content") || 
+                      $('meta[itemprop="image"]').attr("content") || 
+                      null;
+
+    // Remove noise elements from body content to keep it clean (similar to Readability)
+    $("nav, footer, header, script, style, noscript, iframe, link, svg, form, input, button, aside, .sidebar, [class*='sidebar'], .nav, .menu, [class*='menu'], .ads, [class*='ads'], .social-share, [class*='share'], .comments, [class*='comment']").remove();
+
+    // Extract main article content or fallback to body content
+    // We prioritize typical article containers
+    let contentSelector = "article, .article, [class*='article-body'], .post, .entry-content, main, body";
+    let contentHtml = "";
+    let plainText = "";
+
+    const selectors = ["article", ".article-body", "[class*='article-body']", ".entry-content", ".post-content", "main"];
+    let mainContainer = null;
+    for (const sel of selectors) {
+      const el = $(sel);
+      if (el.length > 0 && el.text().trim().split(/\s+/).filter(Boolean).length > 120) {
+        mainContainer = el;
+        break;
+      }
     }
 
-    const reader = new Readability(document);
-    const article = reader.parse();
+    if (mainContainer) {
+      contentHtml = mainContainer.html() || "";
+      plainText = mainContainer.text();
+    } else {
+      contentHtml = $("body").html() || "";
+      plainText = $("body").text();
+    }
 
-    if (!article || !article.textContent || article.textContent.trim().split(/\s+/).filter(Boolean).length < 100) {
+    // Excerpt extraction
+    const excerpt = $('meta[name="description"]').attr("content") || 
+                    $('meta[property="og:description"]').attr("content") || 
+                    plainText.trim().substring(0, 180) + "...";
+
+    const wordCount = plainText.trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount < 100) {
       return NextResponse.json({
         error: "Couldn't extract readable content from this page — it may be paywalled, JavaScript-rendered, or have too little text."
       }, { status: 422 });
     }
 
     // 4. Sanitize HTML
-    // We allow standard safe tags for article readability
-    const sanitizedContent = sanitizeHtml(article.content || "", {
+    const sanitizedContent = sanitizeHtml(contentHtml, {
       allowedTags: [
         "address", "article", "aside", "footer", "header", "h1", "h2", "h3", "h4",
         "h5", "h6", "hgroup", "main", "nav", "section", "blockquote", "dd", "div",
@@ -134,7 +163,6 @@ export async function POST(request: Request) {
       domain = url;
     }
 
-    const wordCount = article.textContent.trim().split(/\s+/).filter(Boolean).length;
     const readingTimeMinutes = Math.max(1, Math.round(wordCount / 200));
 
     // 6. Save or Update in database using admin client (Service Role) to write securely
@@ -156,11 +184,11 @@ export async function POST(request: Request) {
       const { data, error: updateError } = await supabaseAdmin
         .from("clipped_articles")
         .update({
-          title: article.title || "Untitled Article",
-          author: article.byline || null,
+          title,
+          author: author ? author.substring(0, 100) : null,
           content: sanitizedContent,
-          excerpt: article.excerpt || null,
-          image_url: leadImage || null,
+          excerpt: excerpt ? excerpt.substring(0, 300) : null,
+          image_url: leadImage,
           domain,
           reading_time_minutes: readingTimeMinutes,
           created_at: new Date().toISOString() // update timestamp to sort to top
@@ -180,11 +208,11 @@ export async function POST(request: Request) {
         .from("clipped_articles")
         .insert({
           user_id: user.id,
-          title: article.title || "Untitled Article",
-          author: article.byline || null,
+          title,
+          author: author ? author.substring(0, 100) : null,
           content: sanitizedContent,
-          excerpt: article.excerpt || null,
-          image_url: leadImage || null,
+          excerpt: excerpt ? excerpt.substring(0, 300) : null,
+          image_url: leadImage,
           source_url: url,
           domain,
           reading_time_minutes: readingTimeMinutes
@@ -202,7 +230,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       id: savedData.id,
-      title: article.title
+      title
     });
 
   } catch (err: any) {
