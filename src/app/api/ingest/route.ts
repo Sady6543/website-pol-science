@@ -263,7 +263,7 @@ export async function GET(request: Request) {
     });
     results.launches = { status: "success", count: 2 };
 
-    return NextResponse.json({ status: "success", results });
+    return NextResponse.json({ status: "success", results, _debug: { url: supabaseUrl, key: supabaseKey.substring(0, 40) } });
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error("Ingestion endpoint crash error:", errMsg);

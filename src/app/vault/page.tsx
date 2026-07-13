@@ -22,7 +22,7 @@ import {
   FileTextIcon
 } from "lucide-react";
 
-type VaultTab = "bookmarks" | "notes" | "quotes" | "ideas" | "pdfs";
+type VaultTab = "bookmarks" | "notes" | "quotes" | "ideas" | "pdfs" | "clipped";
 
 interface DBBookmark {
   id: string;
@@ -37,6 +37,18 @@ interface DBBookmark {
       icon: string;
     } | null;
   } | null;
+}
+
+interface DBClippedArticle {
+  id: string;
+  title: string;
+  author: string | null;
+  excerpt: string | null;
+  image_url: string | null;
+  source_url: string;
+  domain: string | null;
+  reading_time_minutes: number | null;
+  created_at: string;
 }
 
 interface DBNote {
@@ -68,15 +80,21 @@ interface DBIdea {
 }
 
 export default function VaultPage() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [activeTab, setActiveTab] = useState<VaultTab>("bookmarks");
   
   // Data lists
   const [bookmarks, setBookmarks] = useState<DBBookmark[]>([]);
+  const [clippedArticles, setClippedArticles] = useState<DBClippedArticle[]>([]);
   const [notes, setNotes] = useState<DBNote[]>([]);
   const [quotes, setQuotes] = useState<DBQuote[]>([]);
   const [ideas, setIdeas] = useState<DBIdea[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Scraper Input State
+  const [clipUrl, setClipUrl] = useState("");
+  const [clipping, setClipping] = useState(false);
+  const [clipError, setClipError] = useState("");
 
   // Edit / Create States
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,6 +105,19 @@ export default function VaultPage() {
   const [newQuoteText, setNewQuoteText] = useState("");
   const [newQuoteAuthor, setNewQuoteAuthor] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Trigger form on action=clip query parameter
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("action") === "clip") {
+        setActiveTab("clipped");
+        setShowAddForm(true);
+        // Clear param from URL cleanly
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -107,7 +138,14 @@ export default function VaultPage() {
           `);
         if (bmarks) setBookmarks(bmarks as unknown as DBBookmark[]);
 
-        // 2. Fetch Notes
+        // 2. Fetch Clipped Articles
+        const { data: clips } = await supabase
+          .from("clipped_articles")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (clips) setClippedArticles(clips as unknown as DBClippedArticle[]);
+
+        // 3. Fetch Notes
         const { data: nts } = await supabase
           .from("notes")
           .select(`
@@ -116,7 +154,7 @@ export default function VaultPage() {
           `);
         if (nts) setNotes(nts as unknown as DBNote[]);
 
-        // 3. Fetch Quotes
+        // 4. Fetch Quotes
         const { data: qts } = await supabase
           .from("quotes")
           .select(`
@@ -125,7 +163,7 @@ export default function VaultPage() {
           `);
         if (qts) setQuotes(qts as unknown as DBQuote[]);
 
-        // 4. Fetch Ideas
+        // 5. Fetch Ideas
         const { data: ids } = await supabase
           .from("ideas")
           .select("*")
@@ -149,6 +187,58 @@ export default function VaultPage() {
       setBookmarks((prev) => prev.filter((b) => b.id !== id));
     } catch (err) {
       console.error("Failed deleting bookmark:", err);
+    }
+  };
+
+  const handleDeleteClippedArticle = async (id: string) => {
+    try {
+      await supabase.from("clipped_articles").delete().eq("id", id);
+      setClippedArticles((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      console.error("Failed deleting clipped article:", err);
+    }
+  };
+
+  const handleClipArticle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clipUrl.trim() || !user || !session) return;
+
+    setClipping(true);
+    setClipError("");
+
+    try {
+      const res = await fetch("/api/clip", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ url: clipUrl.trim() })
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setClipError(data.error || "Failed to extract readable content from this page — it may be paywalled or JavaScript-rendered");
+        return;
+      }
+
+      // Success: refresh list and reset form
+      setClipUrl("");
+      
+      const { data: freshClips } = await supabase
+        .from("clipped_articles")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (freshClips) setClippedArticles(freshClips as unknown as DBClippedArticle[]);
+      
+      // Auto switch to clipped tab
+      setActiveTab("clipped");
+
+    } catch (err: any) {
+      console.error("Clipping request failed:", err);
+      setClipError("Could not connect to scraping server. Verify network and try again.");
+    } finally {
+      setClipping(false);
     }
   };
 
@@ -263,6 +353,7 @@ export default function VaultPage() {
 
   const sidebarItems = [
     { id: "bookmarks", label: "Bookmarks", icon: <Bookmark className="h-4.5 w-4.5" />, count: bookmarks.length },
+    { id: "clipped", label: "Clipped Articles", icon: <FileText className="h-4.5 w-4.5" />, count: clippedArticles.length },
     { id: "notes", label: "Personal Notes", icon: <FileText className="h-4.5 w-4.5" />, count: notes.length },
     { id: "quotes", label: "Logged Quotes", icon: <Quote className="h-4.5 w-4.5" />, count: quotes.length },
     { id: "ideas", label: "Conceptual Ideas", icon: <Lightbulb className="h-4.5 w-4.5" />, count: ideas.length },
@@ -286,7 +377,7 @@ export default function VaultPage() {
               Personal Intelligence Library
             </h1>
             
-            {/* Add standalone resource trigger */}
+            {/* Clip Article or Add standalone resource triggers */}
             {(activeTab === "ideas" || activeTab === "quotes") && (
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
@@ -294,6 +385,16 @@ export default function VaultPage() {
               >
                 {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                 <span>{showAddForm ? "Cancel" : `Add stand-alone ${activeTab.slice(0, -1)}`}</span>
+              </button>
+            )}
+
+            {(activeTab === "clipped" || activeTab === "bookmarks") && (
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="rounded-lg bg-accent-signal text-text-primary px-3.5 py-1.5 text-body-sm font-semibold flex items-center gap-1.5 hover:opacity-90 transition-opacity cursor-pointer shadow-elevation"
+              >
+                {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                <span>{showAddForm ? "Cancel" : "Clip Article"}</span>
               </button>
             )}
           </div>
@@ -344,6 +445,44 @@ export default function VaultPage() {
             <div className="md:col-span-3 flex flex-col gap-6">
               
               {/* Standalone Input Form */}
+              {showAddForm && (activeTab === "clipped" || activeTab === "bookmarks") && (
+                <GlassCard glow="primary" className="p-4">
+                  <form onSubmit={handleClipArticle} className="flex flex-col gap-3">
+                    <h3 className="text-body-sm font-semibold text-text-primary">Archive Web Article to Vault</h3>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="Paste article link (e.g. https://example.com/political-news)"
+                        value={clipUrl}
+                        onChange={(e) => setClipUrl(e.target.value)}
+                        required
+                        disabled={clipping}
+                        className="flex-1 rounded border border-glass-edge bg-glass-surface/50 py-1.5 px-2.5 text-body-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-signal"
+                      />
+                      <button
+                        type="submit"
+                        disabled={clipping}
+                        className="rounded bg-accent-signal text-text-primary px-4 py-1.5 text-body-sm font-semibold hover:opacity-90 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {clipping ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Parsing...</span>
+                          </>
+                        ) : (
+                          <span>Save Link</span>
+                        )}
+                      </button>
+                    </div>
+                    {clipError && (
+                      <p className="text-[11px] text-data-negative font-medium bg-data-negative-muted/10 border border-data-negative/20 rounded p-2">
+                        {clipError}
+                      </p>
+                    )}
+                  </form>
+                </GlassCard>
+              )}
+
               {showAddForm && activeTab === "ideas" && (
                 <GlassCard glow="primary" className="p-4">
                   <form onSubmit={handleAddIdea} className="flex flex-col gap-3">
@@ -699,6 +838,60 @@ export default function VaultPage() {
                         </GlassCard>
                       );
                     })
+                  )}
+                </div>
+              )}
+
+              {/* CLIPPED ARTICLES LIST */}
+              {activeTab === "clipped" && (
+                <div className="flex flex-col gap-4">
+                  {clippedArticles.length === 0 ? (
+                    <GlassCard className="p-12 text-center text-body-sm text-text-secondary border-dashed">
+                      No web articles clipped yet. Click &ldquo;Clip Article&rdquo; above to scrape your first URL!
+                    </GlassCard>
+                  ) : (
+                    clippedArticles.map((clip) => (
+                      <GlassCard
+                        key={clip.id}
+                        className="p-4 flex flex-col sm:flex-row sm:items-start justify-between gap-4"
+                      >
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-3 text-mono-sm text-text-tertiary font-mono">
+                            <span className="text-accent-signal font-semibold">{clip.domain || "Web Link"}</span>
+                            <span>· Clipped {new Date(clip.created_at).toLocaleDateString()}</span>
+                            {clip.reading_time_minutes && (
+                              <span>· {clip.reading_time_minutes} min read</span>
+                            )}
+                          </div>
+                          <h3 className="text-body-md font-semibold text-text-primary hover:text-accent-signal transition-colors">
+                            <Link href={`/vault/clipped/${clip.id}`}>
+                              {clip.title}
+                            </Link>
+                          </h3>
+                          {clip.excerpt && (
+                            <p className="text-body-sm text-text-secondary line-clamp-2">
+                              {clip.excerpt}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 sm:self-center shrink-0">
+                          <Link
+                            href={`/vault/clipped/${clip.id}`}
+                            className="rounded p-1.5 border border-glass-edge hover:text-accent-signal hover:border-accent-signal transition-colors"
+                            title="Open Clip"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteClippedArticle(clip.id)}
+                            className="rounded p-1.5 border border-glass-edge text-text-secondary hover:text-data-negative hover:border-data-negative transition-colors cursor-pointer"
+                            title="Delete Clip"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </GlassCard>
+                    ))
                   )}
                 </div>
               )}

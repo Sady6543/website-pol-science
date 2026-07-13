@@ -231,6 +231,17 @@ export function CommandPalette() {
       },
     },
     {
+      id: "a-clip",
+      title: "Clip article from URL",
+      subtitle: "Scrape, parse, and archive custom web link to vault",
+      category: "actions",
+      icon: <Folder className="h-4 w-4" />,
+      action: () => {
+        router.push("/vault?action=clip");
+        setCommandPaletteOpen(false);
+      },
+    },
+    {
       id: "a-theme",
       title: `Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`,
       subtitle: "Toggles app color token sets",
